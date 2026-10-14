@@ -1,0 +1,14 @@
+.secrets/
+deploy*.json
+deploy-payload*.json
+shots/
+__pycache__/
+*.pyc
+dist/
+node_modules/
+data.json.bak*
+data.*.bak
+*.bak
+.sync.lock
+.publish.lock
+meals/

@@ -1,0 +1,70 @@
+{
+  "config": {
+    "site_title": "Coach",
+    "brand": "Coach",
+    "theme": "recovery",
+    "wearable": "none",
+    "units": "lb",
+    "timezone": "America/New_York",
+    "goal": "Get stronger and leaner",
+    "features": {
+      "pullups": false
+    }
+  },
+  "profile": {
+    "name": "",
+    "timezone": "America/New_York",
+    "units": "lb",
+    "sex": null,
+    "birth_date": null,
+    "start_weight": null,
+    "goal_weight": null,
+    "start_date": "2026-10-13",
+    "height_cm": null,
+    "wake_time": null
+  },
+  "targets": {
+    "calories": 2200,
+    "protein_g": 150,
+    "fat_g": null,
+    "sugar_g": null,
+    "steps": 8000
+  },
+  "supplements": [
+    {
+      "id": "creatine",
+      "name": "Creatine",
+      "detail": "5 g daily"
+    },
+    {
+      "id": "multi",
+      "name": "Multivitamin",
+      "detail": "With breakfast"
+    }
+  ],
+  "split": {
+    "Mon": "PUSH",
+    "Tue": "PULL",
+    "Wed": "LEGS",
+    "Thu": "REST",
+    "Fri": "PUSH",
+    "Sat": "PULL",
+    "Sun": "REST"
+  },
+  "weights": [],
+  "food": [],
+  "supplement_log": {},
+  "pullup_max": [],
+  "gtg": [],
+  "workouts": [],
+  "journal": {},
+  "wear": {
+    "source": "none",
+    "days": {},
+    "profile": {},
+    "synced_at": null,
+    "first_day": null
+  },
+  "pullup_context": null,
+  "updated_at": "2026-10-13T20:28:19-04:00"
+}

@@ -1,0 +1,498 @@
+{
+  "name": "Coach Age v1",
+  "version": "1.0.0",
+  "date": "2026-10-08",
+  "reference_implementation": "coach_age.py",
+  "framework": {
+    "effective_age_formula": "years_i = (ln HR_i(x) - ln HR_i(referent_i)) / G",
+    "G_default": 0.085,
+    "G_source": "Gompertz slope implied by a mortality-rate doubling time of ~8 y (Finch, Pike & Witten 1990, Science; https://www.science.org/doi/10.1126/science.2392680). ln2/8.15 = 0.085.",
+    "G_alternative": {
+      "value": 0.0953,
+      "note": "Spiegelhalter 2016 (10%/yr, ln 1.1); WHOOP rounds to 0.1 (t = 10*ln HR). Using 0.1 shrinks all deltas by 15%.",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/27496144/"
+    },
+    "aggregation": "CoachAge = age + clip(sum_i overlap_i * shrink_i * clip(years_i, cap_i), -15, +15)",
+    "shrinkage": "shrink_i = n_i/(n_i + k_i), where n_i = valid days in the window. Pull-up test: 0.5^(test_age_days/90). Heuristic.",
+    "uncertainty": "var_i = (se_years_i*overlap_i*shrink_i)^2 + (prior_sd_i*(1-shrink_i))^2. A component below min_n contributes prior_sd_i^2 and 0 years. CI80 = +/-1.2816*sqrt(sum var), CI95 = +/-1.96*sqrt(sum var). se_years comes from the HR 95% CI plus the measurement SE of the input mean.",
+    "window_days": 30,
+    "referent_philosophy": "Physiology is compared with healthy age/sex-typical values (FRIEND p50 VO2max, the WHOOP neutral RHR, the UK Biobank median SRI). Behaviours are compared with guideline minimums (150 MPA-eq min/wk, 40 min/wk strength, 7 h of sleep). Coach Age = calendar age means 'typical healthy, guideline-meeting peer'.",
+    "confidence": {
+      "high": "SD<2 y, >=8 components, >=80% wear coverage, measured VO2max",
+      "medium": "SD<3.5 y, >=5 components, >=50% coverage",
+      "low": "otherwise"
+    }
+  },
+  "pace_of_aging": {
+    "definition": "pace = 1 + d(delta)/dt in years per year. Theil-Sen slope over the trailing 56 days of daily Coach-Age deltas (each from its own 30-d window), shrunk by slope^2/(slope^2+se^2), clipped to [-1, 3].",
+    "se": "residual SD / sqrt(Sxx), inflated by sqrt(n_points/n_eff) with n_eff = span_days/15 (heuristic, because the overlapping 30-d windows are autocorrelated)",
+    "min_data": "at least 21 daily points, each of which needs at least 14 worn days in its own 30-d window",
+    "whoop_comparison": "WHOOP projects 30-day averages sustained for 6 months against the 6-month WHOOP Age; scale -1x to 3x (WHOOP whitepaper)."
+  },
+  "components": [
+    {
+      "id": "cardiorespiratory_fitness",
+      "input": "VO2max estimate (mL/kg/min): a measured value if available, else the inverse-variance pool of Uth = 15.3*HRmax/RHR_sleep (SD 6, inflated) and Jackson-1990 BMI model (SEE 5.6); between-method variance is added",
+      "norm": {
+        "source": "FRIEND p50 (Kaminsky 2015 Table 3), decade mid-points, linear interpolation",
+        "male": [
+          [
+            25,
+            48.0
+          ],
+          [
+            35,
+            42.4
+          ],
+          [
+            45,
+            37.8
+          ],
+          [
+            55,
+            32.6
+          ],
+          [
+            65,
+            28.2
+          ],
+          [
+            75,
+            24.4
+          ]
+        ],
+        "female": [
+          [
+            25,
+            37.6
+          ],
+          [
+            35,
+            30.2
+          ],
+          [
+            45,
+            26.7
+          ],
+          [
+            55,
+            23.4
+          ],
+          [
+            65,
+            20.0
+          ],
+          [
+            75,
+            18.3
+          ]
+        ],
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4919021/"
+      },
+      "hr": {
+        "value": 0.86,
+        "ci": [
+          0.85,
+          0.87
+        ],
+        "per": "+1 MET (3.5 mL/kg/min)",
+        "source": "Kokkinos 2022 JACC",
+        "url": "https://www.jacc.org/doi/10.1016/j.jacc.2022.05.031"
+      },
+      "years_per_unit": "ln(1/0.86)/3.5/G = 0.507 y per mL/kg/min below referent (1.77 y/MET)",
+      "cap": [
+        -8,
+        8
+      ],
+      "overlap": 1.0,
+      "shrink_k": 14,
+      "min_n": 14,
+      "prior_sd_years": 3.0,
+      "tier": "evidence (input estimated)",
+      "formulas": {
+        "uth": {
+          "eq": "15.3*HRmax/HRrest",
+          "see": "2.7 (measured HRmax) / 4.7 (age-predicted)",
+          "url": "https://pure.au.dk/portal/en/publications/estimation-of-vo2max-from-the-ratio-between-hrmax-and-hrrest-the-/",
+          "caveat": "Validated in 46 well-trained men; poor agreement in middle-aged/older adults (https://pubmed.ncbi.nlm.nih.gov/34495410/)."
+        },
+        "jackson_bmi": {
+          "eq": "56.363 + 1.921*PAR - 0.381*age - 0.754*BMI + 10.987*male",
+          "see": 5.6,
+          "url": "https://ntrs.nasa.gov/citations/20050017669",
+          "caveat": "PAR is approximated from vigorous minutes (heuristic mapping)."
+        },
+        "hunt_nes": {
+          "eq_male": "100.27 - 0.296*age - 0.369*waist_cm - 0.155*RHR + 0.226*PA_index",
+          "eq_female": "74.74 - 0.247*age - 0.259*waist_cm - 0.114*RHR + 0.198*PA_index",
+          "see": "5.70 M / 5.14 F",
+          "url": "https://journals.lww.com/acsm-msse/fulltext/2011/11000/estimating_v_o2peak_from_a_nonexercise_prediction.2.aspx",
+          "status": "not used yet: needs waist circumference (add it to the logs to enable)"
+        }
+      }
+    },
+    {
+      "id": "resting_hr",
+      "input": "30-d mean WHOOP sleeping RHR",
+      "norm": {
+        "male": 60,
+        "female": 64,
+        "source": "WHOOP Healthspan whitepaper neutral values"
+      },
+      "hr": {
+        "male": {
+          "value": 1.16,
+          "ci": [
+            1.1,
+            1.22
+          ],
+          "per": "+10 bpm",
+          "adjusted_for": "VO2max, leisure PA, CV risk factors",
+          "source": "Jensen 2013 Heart",
+          "url": "https://heart.bmj.com/content/99/12/882"
+        },
+        "female": {
+          "value": 1.09,
+          "ci": [
+            1.07,
+            1.12
+          ],
+          "per": "+10 bpm",
+          "source": "Zhang 2016 CMAJ",
+          "url": "https://www.cmaj.ca/content/188/3/E53"
+        }
+      },
+      "cap": [
+        -3,
+        3
+      ],
+      "overlap": 0.5,
+      "overlap_basis": "heuristic: RHR also feeds the Uth VO2max estimate",
+      "shrink_k": 7,
+      "min_n": 7,
+      "prior_sd_years": 1.0,
+      "tier": "evidence"
+    },
+    {
+      "id": "hrv",
+      "input": "30-d geometric mean of WHOOP RMSSD",
+      "norm": {
+        "source": "WHOOP member middle-50% bands (25 y M 50-100, 45 y M 35-60; F 45-90, 30-55); geometric mid-points, log-linear in age, extrapolated past 45 (heuristic)",
+        "url": "https://www.whoop.com/us/en/thelocker/normal-hrv-range-age-gender/"
+      },
+      "hr": {
+        "value": 1.35,
+        "ci": [
+          1.1,
+          1.67
+        ],
+        "per": "lowest vs highest HRV category (SDNN), first CV event",
+        "source": "Hillebrand 2013 Europace",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/23370966/"
+      },
+      "conversion": "z = (ln RMSSD - ln ref)/0.40; ln HR = -0.138*z (ln1.35 spread over 2.18 SD)",
+      "cap": [
+        -2,
+        2
+      ],
+      "overlap": 0.5,
+      "shrink_k": 7,
+      "min_n": 7,
+      "prior_sd_years": 0.7,
+      "tier": "heuristic (outcome is CVD events, not all-cause mortality; metric is SDNN, not RMSSD)"
+    },
+    {
+      "id": "sleep_regularity",
+      "input": "30-d mean WHOOP Sleep Consistency % (0 = not computed, treated as missing), used as an SRI proxy",
+      "curve": {
+        "x_sri_quintile_medians": [
+          65.1,
+          75.6,
+          81.0,
+          85.2,
+          89.8
+        ],
+        "hr_fully_adjusted": [
+          1.0,
+          0.8,
+          0.75,
+          0.72,
+          0.7
+        ],
+        "source": "Windred 2024 Sleep, Tables 1-2",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10782501/"
+      },
+      "referent": 81.0,
+      "cap": [
+        -3,
+        3
+      ],
+      "overlap": 0.844,
+      "overlap_basis": "evidence: ln(0.74)/ln(0.70), top-quintile SRI HR with vs without sleep duration in the model (Windred Table 4 vs 2)",
+      "shrink_k": 7,
+      "min_n": 7,
+      "prior_sd_years": 1.5,
+      "tier": "evidence (WHOOP consistency to SRI mapping is a heuristic)"
+    },
+    {
+      "id": "sleep_duration",
+      "input": "30-d mean hours asleep",
+      "curve": {
+        "x_hours": [
+          5.54,
+          6.34,
+          6.82,
+          7.28,
+          7.94,
+          9.0
+        ],
+        "hr_fully_adjusted": [
+          1.0,
+          0.82,
+          0.83,
+          0.76,
+          0.76,
+          0.76
+        ],
+        "source": "Windred 2024 Table 3 (accelerometer duration); flat 7.94-9 h and beyond (heuristic, consistent with WHOOP's no-penalty >9 h)",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10782501/"
+      },
+      "context": "Cappuccio 2010 meta: short RR 1.12 (1.06-1.18), long RR 1.30 (1.22-1.38) vs 7-8 h; long-sleep penalty not applied (likely reverse causation). https://pmc.ncbi.nlm.nih.gov/articles/PMC2864873/",
+      "referent": 7.0,
+      "cap": [
+        -2.5,
+        2.5
+      ],
+      "overlap": 0.635,
+      "overlap_basis": "evidence: ln(0.84)/ln(0.76), duration HR with vs without SRI (Windred Table 4 vs 3)",
+      "shrink_k": 7,
+      "min_n": 7,
+      "prior_sd_years": 1.0,
+      "tier": "evidence"
+    },
+    {
+      "id": "aerobic_activity",
+      "input": "MPA-equivalent min/wk = Z1 + 2*(Z2..Z5) from non-strength WHOOP workouts, scaled to 7 days of worn data. Zone mapping per ACSM: moderate 40-59% HRR, vigorous 60-89% HRR (Garber 2011, https://europepmc.org/article/med/21694556)",
+      "curve": {
+        "x_min_wk_bin_midpoints": [
+          10,
+          47,
+          112,
+          187,
+          262,
+          337,
+          412,
+          525,
+          650
+        ],
+        "hr": [
+          1.0,
+          0.91,
+          0.84,
+          0.8,
+          0.79,
+          0.74,
+          0.74,
+          0.69,
+          0.68
+        ],
+        "source": "Lee 2022 Circulation, Table 3 (long-term MPA, multivariable)",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9378548/"
+      },
+      "referent": 150,
+      "cap": [
+        -3,
+        3
+      ],
+      "overlap": 0.7,
+      "overlap_basis": "heuristic (overlap with CRF)",
+      "shrink_k": 14,
+      "min_n": 14,
+      "prior_sd_years": 1.5,
+      "tier": "evidence (self-reported PA in the source vs HR-zone minutes here)"
+    },
+    {
+      "id": "strength_training",
+      "input": "strength-sport minutes/wk (WHOOP weightlifting etc.) merged with manual PUSH/PULL logs (45 min if no duration, heuristic)",
+      "curve": "ln HR linear from 1.0 at 0 min to 0.83 at 40 min/wk; flat above that (no credit or penalty >140 min, heuristic)",
+      "hr": {
+        "value": 0.83,
+        "ci": [
+          0.79,
+          0.86
+        ],
+        "at": "40 min/wk (J-shaped nadir)",
+        "source": "Momma 2022 BJSM",
+        "url": "https://bjsm.bmj.com/content/56/13/755"
+      },
+      "referent": 40,
+      "cap": [
+        -0.5,
+        2.5
+      ],
+      "overlap": 1.0,
+      "shrink_k": 14,
+      "min_n": 14,
+      "prior_sd_years": 1.0,
+      "tier": "evidence"
+    },
+    {
+      "id": "pullup_strength",
+      "input": "latest max strict pull-ups (test <=120 d old)",
+      "norm": {
+        "male_50_59": 5,
+        "female": 2,
+        "under_40_add": 3,
+        "source": "HEURISTIC: no population pull-up norms found"
+      },
+      "conversion": "ln HR = -0.84*G*ln((reps+1)/(ref+1)), i.e. 0 reps +1.5 y and 15 reps about -1.5 y before overlap",
+      "anchors": [
+        "Leong 2015 Lancet (PURE): grip HR 1.16 (1.13-1.20) per 5 kg lower, https://pubmed.ncbi.nlm.nih.gov/25982160/",
+        "Yang 2019 JAMA Netw Open: >40 vs <10 push-ups, CVD IRR 0.04 (0.01-0.36), https://jamanetwork.com/journals/jamanetworkopen/fullarticle/2724778"
+      ],
+      "cap": [
+        -1.5,
+        1.5
+      ],
+      "overlap": 0.5,
+      "shrink": "0.5^(test_age_days/90)",
+      "min_n": 1,
+      "prior_sd_years": 0.8,
+      "tier": "heuristic"
+    },
+    {
+      "id": "body_mass_index",
+      "input": "latest weigh-in (<=60 d) and WHOOP height",
+      "curve": {
+        "x_bmi_midpoints": [
+          16.75,
+          19.25,
+          21.25,
+          23.75,
+          26.25,
+          28.75,
+          32.5,
+          37.5,
+          50.0
+        ],
+        "hr": [
+          1.51,
+          1.13,
+          1.0,
+          1.0,
+          1.07,
+          1.2,
+          1.45,
+          1.94,
+          2.76
+        ],
+        "male_scale_above_25": "ln HR * ln(1.51)/ln(1.31) = x1.53 (men: HR per 5 kg/m^2 1.51 vs 1.31 overall)",
+        "source": "Global BMI Mortality Collaboration 2016 Lancet",
+        "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4995441/"
+      },
+      "referent": "22.5-25",
+      "cap": [
+        -2,
+        6
+      ],
+      "overlap": 0.7,
+      "overlap_basis": "heuristic (BMI also feeds the Jackson VO2 estimate; fitness confounds)",
+      "shrink_k": 0,
+      "min_n": 1,
+      "prior_sd_years": 1.5,
+      "tier": "evidence",
+      "upgrade": "Replace with body-fat % when available (Jayedi 2022: +11% mortality per 10% body fat, cited in the WHOOP whitepaper) or with waist circumference."
+    },
+    {
+      "id": "alcohol",
+      "input": "journal drinks/day averaged over logged days, x7",
+      "rule": "0 below 100 g/wk (~7 US drinks); +ln(1.10) per extra 100 g/wk (heuristic slope)",
+      "anchor": {
+        "source": "Wood 2018 Lancet: all-cause mortality lowest at <=100 g/wk; no single per-100 g all-cause HR found",
+        "url": "https://pubmed.ncbi.nlm.nih.gov/29676281/"
+      },
+      "cap": [
+        0,
+        3
+      ],
+      "overlap": 1.0,
+      "shrink_k": 14,
+      "min_n": 7,
+      "prior_sd_years": 0.5,
+      "tier": "heuristic (evidence-anchored)"
+    },
+    {
+      "id": "sauna",
+      "input": "sessions/wk (WHOOP 'sauna' activities + journal)",
+      "curve": {
+        "x": [
+          1,
+          2.5,
+          5.5
+        ],
+        "hr": [
+          1.0,
+          0.76,
+          0.6
+        ]
+      },
+      "source": "Laukkanen 2015 JAMA Intern Med (Finnish men): 4-7/wk HR 0.60 (0.46-0.80) vs 1/wk",
+      "url": "https://jamanetwork.com/journals/jamainternalmedicine/fullarticle/2130724",
+      "cap": [
+        -1.5,
+        0
+      ],
+      "overlap": 0.5,
+      "shrink_k": 14,
+      "min_n": 14,
+      "prior_sd_years": 0.4,
+      "tier": "evidence (single cohort; healthy-user bias likely)"
+    },
+    {
+      "id": "added_sugar",
+      "input": "% kcal from logged sugar (TOTAL sugar used as an upper bound for ADDED sugar)",
+      "curve": {
+        "x_pct": [
+          10,
+          17.5,
+          25
+        ],
+        "hr": [
+          1.0,
+          1.3,
+          2.75
+        ]
+      },
+      "source": "Yang 2014 JAMA Intern Med (CVD mortality): 10-24.9% HR 1.30, >=25% HR 2.75 vs <10%",
+      "url": "https://jamanetwork.com/journals/jamainternalmedicine/fullarticle/1819573",
+      "cap": [
+        0,
+        2
+      ],
+      "overlap": 0.5,
+      "shrink_k": 14,
+      "min_n": 7,
+      "prior_sd_years": 0.5,
+      "tier": "heuristic (evidence-anchored; CVD not all-cause)"
+    }
+  ],
+  "not_scored": {
+    "protein": "No all-cause HR suitable for a years delta was located; it's shown as a coaching target that supports lean mass and the pull-up component.",
+    "stress_1to5": "Self-report; no validated HR mapping found. Display only.",
+    "caffeine": "Display only.",
+    "steps": "WHOOP v2 API exposes no step count. Paluch 2022 quartile HRs (Q2 0.60, Q3 0.55, Q4 0.47 vs Q1 3,553 steps; plateau 6-8k at >=60 y, 8-10k at <60 y) are ready if a step source is added: https://pubmed.ncbi.nlm.nih.gov/35247352/",
+    "spo2_skin_temp_resp_rate": "Used as illness/anomaly flags only (freeze Coach Age updates on flagged days); no mortality HR mapping."
+  },
+  "metabolic_age_variant": {
+    "name": "Cardiometabolic Age",
+    "components": [
+      "cardiorespiratory_fitness",
+      "resting_hr",
+      "body_mass_index",
+      "aerobic_activity",
+      "strength_training",
+      "added_sugar"
+    ],
+    "rationale": "Uses the same HR->years engine on the metabolic subset. Bioimpedance/BMR 'metabolic age' is a proprietary score with only cross-sectional associations and no mortality validation, so we don't use it."
+  }
+}

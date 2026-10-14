@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<link rel="apple-touch-icon" sizes="180x180" href="/c5-180.png">
+<link rel="icon" type="image/svg+xml" href="/c4-favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="/c5-32.png">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0b0b0b">
+<meta name="color-scheme" content="dark light">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="__SITE_TITLE__">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="/manifest.json?v=5">
+<link rel="preload" href="/data.json" as="fetch" crossorigin>
+<link rel="stylesheet" href="/app.css">
+<title>__SITE_TITLE__</title>
+</head>
+<body>
+<div class="topbar" id="topbar">
+  <label class="search" for="q">
+    <svg class="ic" aria-hidden="true"><use href="/i/magnifying-glass.svg#i"/></svg>
+    <input id="q" type="search" aria-label="Search" placeholder="Search workouts, meals, notes, dates" autocomplete="off" enterkeyhint="search">
+    <button class="clear" id="qclear" aria-label="Clear search" hidden><svg class="ic" aria-hidden="true"><use href="/i/x-circle-fill.svg#i"/></svg></button>
+  </label>
+  <button class="qcancel" id="qcancel" hidden>Cancel</button>
+  <button class="rfbtn" id="rfbtn" type="button" aria-label="Refresh data"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+</div>
+<div class="rfpill" id="rfpill" role="status" aria-live="polite" hidden></div>
+<div class="mbar" id="mbar" hidden></div>
+<main id="view"><div class="loading">Loading…</div></main>
+<div id="searchview" class="searchview" hidden></div>
+<div class="pages" id="pages" hidden></div>
+<nav class="tabbar" id="tabbar" aria-label="Sections">
+  <button data-tab="today" class="on"><svg class="ic r" aria-hidden="true"><use href="/i/sun.svg#i"/></svg><svg class="ic f" aria-hidden="true"><use href="/i/sun-fill.svg#i"/></svg><span>Today</span></button>
+  <button data-tab="health"><svg class="ic r" aria-hidden="true"><use href="/i/heartbeat.svg#i"/></svg><svg class="ic f" aria-hidden="true"><use href="/i/heartbeat-fill.svg#i"/></svg><span>Health</span></button>
+  <button data-tab="trends"><svg class="ic r" aria-hidden="true"><use href="/i/chart-line-up.svg#i"/></svg><svg class="ic f" aria-hidden="true"><use href="/i/chart-line-up-fill.svg#i"/></svg><span>Trends</span></button>
+  <button data-tab="training"><svg class="ic r" aria-hidden="true"><use href="/i/barbell.svg#i"/></svg><svg class="ic f" aria-hidden="true"><use href="/i/barbell-fill.svg#i"/></svg><span>Training</span></button>
+  <button data-tab="more"><svg class="ic r" aria-hidden="true"><use href="/i/list.svg#i"/></svg><svg class="ic f" aria-hidden="true"><use href="/i/list-fill.svg#i"/></svg><span>More</span></button>
+</nav>
+<div class="scrim" id="scrim" hidden></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheettitle" hidden>
+  <div class="grabwrap" id="grab" aria-hidden="true"><div class="grabber"></div></div>
+  <div class="sheet-head" id="sheethead"><h2 id="sheettitle"></h2><button class="xbtn" id="sheetclose" aria-label="Close">
+    <svg class="ic" aria-hidden="true"><use href="/i/x.svg#i"/></svg></button></div>
+  <div class="sheet-body" id="sheetbody"></div>
+</section>
+<div class="tip" id="tip" role="status" hidden></div>
+<script src="/app.js" defer></script>
+</body>
+</html>
